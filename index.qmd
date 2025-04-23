@@ -1,0 +1,13 @@
+---
+title: "1v0site"
+image: "files/profile.png"
+about:
+  template: jolla
+  links:
+    - icon: envelope
+      href: mailto:xikuang@ucsd.edu
+    - icon: linkedin
+      href: https://www.linkedin.com/in/xingyu-kuang
+---
+
+This is my website for MGTA 495.
