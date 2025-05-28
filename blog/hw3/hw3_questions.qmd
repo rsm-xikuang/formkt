@@ -6,19 +6,17 @@ jupyter: python3
 editor: visual
 ---
 
-
-This assignment expores two methods for estimating the MNL model: (1) via Maximum Likelihood, and (2) via a Bayesian approach using a Metropolis-Hastings MCMC algorithm. 
-
+This assignment expores two methods for estimating the MNL model: (1) via Maximum Likelihood, and (2) via a Bayesian approach using a Metropolis-Hastings MCMC algorithm.
 
 ## 1. Likelihood for the Multi-nomial Logit (MNL) Model
 
-Suppose we have $i=1,\ldots,n$ consumers who each select exactly one product $j$ from a set of $J$ products. The outcome variable is the identity of the product chosen $y_i \in \{1, \ldots, J\}$ or equivalently a vector of $J-1$ zeros and $1$ one, where the $1$ indicates the selected product. For example, if the third product was chosen out of 3 products, then either $y=3$ or $y=(0,0,1)$ depending on how we want to represent it. Suppose also that we have a vector of data on each product $x_j$ (eg, brand, price, etc.). 
+Suppose we have $i=1,\ldots,n$ consumers who each select exactly one product $j$ from a set of $J$ products. The outcome variable is the identity of the product chosen $y_i \in \{1, \ldots, J\}$ or equivalently a vector of $J-1$ zeros and $1$ one, where the $1$ indicates the selected product. For example, if the third product was chosen out of 3 products, then either $y=3$ or $y=(0,0,1)$ depending on how we want to represent it. Suppose also that we have a vector of data on each product $x_j$ (eg, brand, price, etc.).
 
 We model the consumer's decision as the selection of the product that provides the most utility, and we'll specify the utility function as a linear function of the product characteristics:
 
 $$ U_{ij} = x_j'\beta + \epsilon_{ij} $$
 
-where $\epsilon_{ij}$ is an i.i.d. extreme value error term. 
+where $\epsilon_{ij}$ is an i.i.d. extreme value error term.
 
 The choice of the i.i.d. extreme value error term leads to a closed-form expression for the probability that consumer $i$ chooses product $j$:
 
@@ -44,15 +42,13 @@ And the joint log-likelihood function is:
 
 $$ \ell_n(\beta) = \sum_{i=1}^n \sum_{j=1}^J \delta_{ij} \log(\mathbb{P}_i(j)) $$
 
-
-
 ## 2. Simulate Conjoint Data
 
-We will simulate data from a conjoint experiment about video content streaming services. We elect to simulate 100 respondents, each completing 10 choice tasks, where they choose from three alternatives per task. For simplicity, there is not a "no choice" option; each simulated respondent must select one of the 3 alternatives. 
+We will simulate data from a conjoint experiment about video content streaming services. We elect to simulate 100 respondents, each completing 10 choice tasks, where they choose from three alternatives per task. For simplicity, there is not a "no choice" option; each simulated respondent must select one of the 3 alternatives.
 
 Each alternative is a hypothetical streaming offer consistent of three attributes: (1) brand is either Netflix, Amazon Prime, or Hulu; (2) ads can either be part of the experience, or it can be ad-free, and (3) price per month ranges from \$4 to \$32 in increments of \$4.
 
-The part-worths (ie, preference weights or beta parameters) for the attribute levels will be 1.0 for Netflix, 0.5 for Amazon Prime (with 0 for Hulu as the reference brand); -0.8 for included adverstisements (0 for ad-free); and -0.1*price so that utility to consumer $i$ for hypothethical streaming service $j$ is 
+The part-worths (ie, preference weights or beta parameters) for the attribute levels will be 1.0 for Netflix, 0.5 for Amazon Prime (with 0 for Hulu as the reference brand); -0.8 for included adverstisements (0 for ad-free); and -0.1\*price so that utility to consumer $i$ for hypothethical streaming service $j$ is
 
 $$
 u_{ij} = (1 \times Netflix_j) + (0.5 \times Prime_j) + (-0.8*Ads_j) - 0.1\times Price_j + \varepsilon_{ij}
@@ -67,10 +63,9 @@ import pandas as pd
 df = pd.read_csv("conjoint_data.csv")
 ```
 
-
 ## 3. Preparing the Data for Estimation
 
-The "hard part" of the MNL likelihood function is organizing the data, as we need to keep track of 3 dimensions (consumer $i$, covariate $k$, and product $j$) instead of the typical 2 dimensions for cross-sectional regression models (consumer $i$ and covariate $k$). The fact that each task for each respondent has the same number of alternatives (3) helps.  In addition, we need to convert the categorical variables for brand and ads into binary variables.
+The "hard part" of the MNL likelihood function is organizing the data, as we need to keep track of 3 dimensions (consumer $i$, covariate $k$, and product $j$) instead of the typical 2 dimensions for cross-sectional regression models (consumer $i$ and covariate $k$). The fact that each task for each respondent has the same number of alternatives (3) helps. In addition, we need to convert the categorical variables for brand and ads into binary variables.
 
 ```{python}
 df['Netflix'] = (df['brand'] == 'N').astype(int)
@@ -82,7 +77,6 @@ df = df[['resp', 'task', 'choice', 'price', 'Netflix', 'Prime', 'Ads']]
 df['alt_id'] = df.groupby(['resp', 'task']).cumcount()
 
 df.head()
-
 ```
 
 In this step, the conjoint data is reshaped into long format, where each row represents a single alternative shown to a respondent during a specific task. Categorical variables like brand and ad are converted into binary indicators (`Netflix`, `Prime`, `Ads`) to prepare for modeling. The `alt_id` column indexes alternatives within each task, and the `resp` and `task` columns are retained to uniquely identify each choice situation. This structure enables the data to be used in a Multinomial Logit (MNL) model.
@@ -174,8 +168,6 @@ summary.round(4)
 
 ```
 
-
-
 ## 5. Estimation via Bayesian Methods
 
 ```{python}
@@ -238,7 +230,6 @@ mcmc_summary = pd.DataFrame({
 mcmc_summary
 
 ```
-
 
 ```{python}
 netflix_samples = samples_post[:, 0]
@@ -303,9 +294,6 @@ comparison_table = pd.DataFrame({
 comparison_table
 ```
 
-
-
-
 ## 6. Discussion
 
 **Interpreting Parameter Estimates Without Knowing the Data Was Simulated**
@@ -318,21 +306,6 @@ As for $\beta_{\text{price\_std}}$, the posterior mean is approximately $-0.79$,
 
 Altogether, the results show a preference hierarchy with Netflix at the top, Prime in the middle, and Hulu at the bottom, moderated by strong aversion to ads and consistent sensitivity to price increases—trends that are highly consistent with real-world consumer behavior in digital streaming.
 
-
-
 **Multi-Level Modeling in Conjoint Analysis**
 
-To simulate and estimate a multi-level (also known as random-parameter or hierarchical) model, the key change is allowing the parameters (e.g., $\beta$ coefficients) to vary across individuals rather than assuming a single, fixed set of preferences for the entire population. 
-Instead of generating one vector of true $\beta$ values for the whole sample, we would first draw individual-level coefficients from a population-level distribution—typically multivariate normal, such that $\beta_i \sim \mathcal{N}(\mu, \Sigma)$, where $\mu$ represents the average preference in the population and $\Sigma$ captures heterogeneity. Each respondent's choices would then be simulated using their own personal $\beta_i$. For estimation, we would need to use hierarchical Bayesian methods (e.g., Gibbs sampling or Hamiltonian Monte Carlo) to recover both the individual-level coefficients and the population-level parameters. This approach reflects the fact that in real-world conjoint data, preferences differ across individuals, and modeling this heterogeneity is crucial for accurate inference and personalized predictions.
-
-
-
-
-
-
-
-
-
-
-
-
+To simulate and estimate a multi-level (also known as random-parameter or hierarchical) model, the key change is allowing the parameters (e.g., $\beta$ coefficients) to vary across individuals rather than assuming a single, fixed set of preferences for the entire population. Instead of generating one vector of true $\beta$ values for the whole sample, we would first draw individual-level coefficients from a population-level distribution—typically multivariate normal, such that $\beta_i \sim \mathcal{N}(\mu, \Sigma)$, where $\mu$ represents the average preference in the population and $\Sigma$ captures heterogeneity. Each respondent's choices would then be simulated using their own personal $\beta_i$. For estimation, we would need to use hierarchical Bayesian methods (e.g., Gibbs sampling or Hamiltonian Monte Carlo) to recover both the individual-level coefficients and the population-level parameters. This approach reflects the fact that in real-world conjoint data, preferences differ across individuals, and modeling this heterogeneity is crucial for accurate inference and personalized predictions.
