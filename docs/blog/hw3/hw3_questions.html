@@ -257,102 +257,25 @@ u_{ij} = (1 \times Netflix_j) + (0.5 \times Prime_j) + (-0.8*Ads_j) - 0.1\times 
 \]</span></p>
 <p>where the variables are binary indicators and <span class="math inline">\(\varepsilon\)</span> is Type 1 Extreme Value (ie, Gumble) distributed.</p>
 <p>The following code provides the simulation of the conjoint data.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
-</div>
-<div id="callout-1" class="callout-1-contents callout-collapse collapse">
-<div class="callout-body-container callout-body">
-<pre class="{r}"><code># set seed for reproducibility
-set.seed(123)
-
-# define attributes
-brand &lt;- c("N", "P", "H") # Netflix, Prime, Hulu
-ad &lt;- c("Yes", "No")
-price &lt;- seq(8, 32, by=4)
-
-# generate all possible profiles
-profiles &lt;- expand.grid(
-    brand = brand,
-    ad = ad,
-    price = price
-)
-m &lt;- nrow(profiles)
-
-# assign part-worth utilities (true parameters)
-b_util &lt;- c(N = 1.0, P = 0.5, H = 0)
-a_util &lt;- c(Yes = -0.8, No = 0.0)
-p_util &lt;- function(p) -0.1 * p
-
-# number of respondents, choice tasks, and alternatives per task
-n_peeps &lt;- 100
-n_tasks &lt;- 10
-n_alts &lt;- 3
-
-# function to simulate one respondent’s data
-sim_one &lt;- function(id) {
-  
-    datlist &lt;- list()
-    
-    # loop over choice tasks
-    for (t in 1:n_tasks) {
-        
-        # randomly sample 3 alts (better practice would be to use a design)
-        dat &lt;- cbind(resp=id, task=t, profiles[sample(m, size=n_alts), ])
-        
-        # compute deterministic portion of utility
-        dat$v &lt;- b_util[dat$brand] + a_util[dat$ad] + p_util(dat$price) |&gt; round(10)
-        
-        # add Gumbel noise (Type I extreme value)
-        dat$e &lt;- -log(-log(runif(n_alts)))
-        dat$u &lt;- dat$v + dat$e
-        
-        # identify chosen alternative
-        dat$choice &lt;- as.integer(dat$u == max(dat$u))
-        
-        # store task
-        datlist[[t]] &lt;- dat
-    }
-    
-    # combine all tasks for one respondent
-    do.call(rbind, datlist)
-}
-
-# simulate data for all respondents
-conjoint_data &lt;- do.call(rbind, lapply(1:n_peeps, sim_one))
-
-# remove values unobservable to the researcher
-conjoint_data &lt;- conjoint_data[ , c("resp", "task", "brand", "ad", "price", "choice")]
-
-# clean up
-rm(list=setdiff(ls(), "conjoint_data"))</code></pre>
-</div>
-</div>
+<div id="6bb97122" class="cell" data-execution_count="1">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.read_csv(<span class="st">"conjoint_data.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="preparing-the-data-for-estimation" class="level2">
 <h2 class="anchored" data-anchor-id="preparing-the-data-for-estimation">3. Preparing the Data for Estimation</h2>
 <p>The “hard part” of the MNL likelihood function is organizing the data, as we need to keep track of 3 dimensions (consumer <span class="math inline">\(i\)</span>, covariate <span class="math inline">\(k\)</span>, and product <span class="math inline">\(j\)</span>) instead of the typical 2 dimensions for cross-sectional regression models (consumer <span class="math inline">\(i\)</span> and covariate <span class="math inline">\(k\)</span>). The fact that each task for each respondent has the same number of alternatives (3) helps. In addition, we need to convert the categorical variables for brand and ads into binary variables.</p>
-<div id="f6ece138" class="cell" data-execution_count="1">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.read_csv(<span class="st">"conjoint_data.csv"</span>)</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>df[<span class="st">'Netflix'</span>] <span class="op">=</span> (df[<span class="st">'brand'</span>] <span class="op">==</span> <span class="st">'N'</span>).astype(<span class="bu">int</span>)</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>df[<span class="st">'Prime'</span>] <span class="op">=</span> (df[<span class="st">'brand'</span>] <span class="op">==</span> <span class="st">'P'</span>).astype(<span class="bu">int</span>)</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>df[<span class="st">'Ads'</span>] <span class="op">=</span> (df[<span class="st">'ad'</span>] <span class="op">==</span> <span class="st">'Yes'</span>).astype(<span class="bu">int</span>)</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> df[[<span class="st">'resp'</span>, <span class="st">'task'</span>, <span class="st">'choice'</span>, <span class="st">'price'</span>, <span class="st">'Netflix'</span>, <span class="st">'Prime'</span>, <span class="st">'Ads'</span>]]</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>df[<span class="st">'alt_id'</span>] <span class="op">=</span> df.groupby([<span class="st">'resp'</span>, <span class="st">'task'</span>]).cumcount()</span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>df.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-display" data-execution_count="7">
+<div id="7e5f8c69" class="cell" data-execution_count="2">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>df[<span class="st">'Netflix'</span>] <span class="op">=</span> (df[<span class="st">'brand'</span>] <span class="op">==</span> <span class="st">'N'</span>).astype(<span class="bu">int</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>df[<span class="st">'Prime'</span>] <span class="op">=</span> (df[<span class="st">'brand'</span>] <span class="op">==</span> <span class="st">'P'</span>).astype(<span class="bu">int</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>df[<span class="st">'Ads'</span>] <span class="op">=</span> (df[<span class="st">'ad'</span>] <span class="op">==</span> <span class="st">'Yes'</span>).astype(<span class="bu">int</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> df[[<span class="st">'resp'</span>, <span class="st">'task'</span>, <span class="st">'choice'</span>, <span class="st">'price'</span>, <span class="st">'Netflix'</span>, <span class="st">'Prime'</span>, <span class="st">'Ads'</span>]]</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>df[<span class="st">'alt_id'</span>] <span class="op">=</span> df.groupby([<span class="st">'resp'</span>, <span class="st">'task'</span>]).cumcount()</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>df.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="2">
 <div>
 
 
@@ -436,7 +359,7 @@ rm(list=setdiff(ls(), "conjoint_data"))</code></pre>
 </section>
 <section id="estimation-via-maximum-likelihood" class="level2">
 <h2 class="anchored" data-anchor-id="estimation-via-maximum-likelihood">4. Estimation via Maximum Likelihood</h2>
-<div id="4bd5e277" class="cell" data-execution_count="2">
+<div id="4485e7c2" class="cell" data-execution_count="3">
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> mnl_log_likelihood(params, X, y, group_sizes):</span>
@@ -466,7 +389,7 @@ rm(list=setdiff(ls(), "conjoint_data"))</code></pre>
 <span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">-</span>log_likelihood  <span class="co"># Negative for minimization</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="966e5106" class="cell" data-execution_count="3">
+<div id="5c0231ad" class="cell" data-execution_count="4">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> scipy.optimize <span class="im">import</span> minimize</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> numpy.linalg <span class="im">import</span> inv</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -516,7 +439,7 @@ rm(list=setdiff(ls(), "conjoint_data"))</code></pre>
 <span id="cb4-47"><a href="#cb4-47" aria-hidden="true" tabindex="-1"></a>})</span>
 <span id="cb4-48"><a href="#cb4-48" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-49"><a href="#cb4-49" aria-hidden="true" tabindex="-1"></a>summary.<span class="bu">round</span>(<span class="dv">4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-display" data-execution_count="9">
+<div class="cell-output cell-output-display" data-execution_count="4">
 <div>
 
 
@@ -573,7 +496,7 @@ rm(list=setdiff(ls(), "conjoint_data"))</code></pre>
 </section>
 <section id="estimation-via-bayesian-methods" class="level2">
 <h2 class="anchored" data-anchor-id="estimation-via-bayesian-methods">5. Estimation via Bayesian Methods</h2>
-<div id="8a4a509c" class="cell" data-execution_count="4">
+<div id="e4223984" class="cell" data-execution_count="5">
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>np.random.seed(<span class="dv">42</span>)</span>
@@ -631,7 +554,7 @@ rm(list=setdiff(ls(), "conjoint_data"))</code></pre>
 <span id="cb5-55"><a href="#cb5-55" aria-hidden="true" tabindex="-1"></a>}).<span class="bu">round</span>(<span class="dv">4</span>)</span>
 <span id="cb5-56"><a href="#cb5-56" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-57"><a href="#cb5-57" aria-hidden="true" tabindex="-1"></a>mcmc_summary</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-display" data-execution_count="10">
+<div class="cell-output cell-output-display" data-execution_count="5">
 <div>
 
 
@@ -685,7 +608,7 @@ rm(list=setdiff(ls(), "conjoint_data"))</code></pre>
 </div>
 </div>
 </div>
-<div id="29bc1d1f" class="cell" data-execution_count="5">
+<div id="a24556d6" class="cell" data-execution_count="6">
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>netflix_samples <span class="op">=</span> samples_post[:, <span class="dv">0</span>]</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>ads_samples <span class="op">=</span> samples_post[:, <span class="dv">2</span>]</span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -722,12 +645,12 @@ rm(list=setdiff(ls(), "conjoint_data"))</code></pre>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="hw3_questions_files/figure-html/cell-6-output-1.png" width="1139" height="566" class="figure-img"></p>
+<p><img src="hw3_questions_files/figure-html/cell-7-output-1.png" width="1139" height="566" class="figure-img"></p>
 </figure>
 </div>
 </div>
 </div>
-<div id="dad252de" class="cell" data-execution_count="6">
+<div id="54738164" class="cell" data-execution_count="7">
 <div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>summary_rounded <span class="op">=</span> summary.copy()</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>summary_rounded[[<span class="st">'Estimate'</span>, <span class="st">'Std. Error'</span>, <span class="st">'CI Lower (95%)'</span>, <span class="st">'CI Upper (95%)'</span>]] <span class="op">=</span> summary_rounded[</span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    [<span class="st">'Estimate'</span>, <span class="st">'Std. Error'</span>, <span class="st">'CI Lower (95%)'</span>, <span class="st">'CI Upper (95%)'</span>]</span>
@@ -751,7 +674,7 @@ rm(list=setdiff(ls(), "conjoint_data"))</code></pre>
 <span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>})</span>
 <span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>comparison_table</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-display" data-execution_count="12">
+<div class="cell-output cell-output-display" data-execution_count="7">
 <div>
 
 
