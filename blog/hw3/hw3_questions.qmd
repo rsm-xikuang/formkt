@@ -164,8 +164,14 @@ summary = pd.DataFrame({
     'CI Upper (95%)': conf_int[:, 1]
 })
 
-summary.round(4)
 
+```
+
+#### Table: MLE Estimates for $\beta_{\text{netflix}}, \beta_{\text{prime}}, \beta_{\text{ads}}, \beta_{\text{price}}$
+
+```{python}
+#| echo: false
+summary.round(4)
 ```
 
 ## 5. Estimation via Bayesian Methods
@@ -227,8 +233,13 @@ mcmc_summary = pd.DataFrame({
     'CI Upper (95%)': np.percentile(samples_post, 97.5, axis=0)
 }).round(4)
 
-mcmc_summary
+```
 
+#### Table: Bayesian MCMC Posterior Summary
+
+```{python}
+#| echo: false
+mcmc_summary
 ```
 
 ```{python}
@@ -265,7 +276,6 @@ axs[1, 1].grid(True)
 
 plt.tight_layout()
 plt.show()
-
 ```
 
 ```{python}
@@ -293,6 +303,8 @@ comparison_table = pd.DataFrame({
 
 comparison_table
 ```
+
+The posterior means, standard deviations, and 95% credible intervals from the MCMC sampler closely align with the MLE estimates and their corresponding confidence intervals. This agreement confirms that the Bayesian and frequentist approaches produce consistent results for all four parameters, with only minor differences due to the incorporation of prior information in the Bayesian framework. The comparison validates the correctness of the MCMC implementation.
 
 ## 6. Discussion
 
